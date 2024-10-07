@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Search with AWS Rekognition</title>
+    <link rel="icon" href="images/IMG_2304.PNG">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Itim&family=Mali:ital,wght@0,400;0,600;1,700&display=swap');
+        body {
+            background-image: url('https://i.pinimg.com/564x/f7/a1/8e/f7a18ee3567d8b7ddee1f46b26f89e1c.jpg'); /* ใส่ URL ของรูป */
+            background-size: cover; /* ปรับขนาดให้เต็มหน้าจอ */
+            font-family: 'Itim', cursive;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            text-align: center;
+        }
+        h1 {
+            color: #333;
+        }
+        form {
+            background-color: #dce1b1;
+            padding: 20px;
+            margin: 0 auto;
+            width: 400px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+        }
+        input[type="file"] {
+            width: 90%;
+            background-color: #e7cedd;;
+            padding: 12px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 50px;
+        }
+        input[type="text"] {
+            width: 90%;
+            background-color: #e7cedd;;
+            padding: 12px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 50px;
+        }
+        .container {
+            position: relative;
+            width: 400px;
+            height: 100px;
+            background: transparent;
+            margin: auto;
+            padding-top: 20px;
+        }
+        .button {
+            font-family: 'Itim', cursive;
+            color: #060505;
+            font-weight: normal;
+            font-size: 20px;
+            background: #9DCAEB;
+            border-radius: 40px;
+            padding: 20px 40px;
+            border: none;
+            transition: 0.5s ease;
+            box-shadow: 0 15px 60px -5px rgba(0, 0, 0, 0.5);
+            position: relative;
+        }
+        .button:hover {
+            box-shadow: none;
+            border-radius: 40px;
+            cursor: pointer;
+        }
+        #message, #framesContainer {
+            margin-top: 80px;
+        }
+        #framesContainer img {
+            max-width: 200px;
+            margin: 10px;
+            display: inline-block; /* ทำให้รูปแสดงต่อกันในแนวนอน */
+            border-radius: 40px;
+        }
+        p {
+            color: #007bff;
+        }
+        * {
+    margin: 10p;
+    padding: 0;
+    box-sizing: border-box;
+}
+body {
+    font-family: 'Itim', cursive;
+}
+label {
+    display: block;
+    font-size: 18px;
+    margin-bottom: 10px;
+    color: #333;
+}
+input[type="number"] {
+    width: 90%; /* เพิ่มความกว้าง */
+    background-color: #e7cedd;
+    padding: 12px; /* เพิ่ม padding เพื่อให้กรอบสูงขึ้น */
+    margin-bottom: 10px;
+    font-size: 18px; /* ขนาดตัวอักษรใหญ่ขึ้น */
+    border: 1px solid #ccc;
+    border-radius: 50px;
+    text-align: center;
+}
+input[type="number"]:focus {
+    border-color: #1c2127;
+    outline: none;
+    box-shadow: 0px 0px 5px rgba(16, 17, 18, 0.5);
+}
+.logo {
+    width: 150px; /* กำหนดขนาดความกว้างของโลโก้ */
+    height: auto; /* ปรับขนาดตามอัตราส่วน */
+    float: left; /* จัดตำแหน่งโลโก้ให้อยู่ทางซ้าย */
+}
+.content-wrapper {
+            display: flex;
+            align-items: center; /* จัดให้ข้อความและภาพอยู่ตรงกลางแนวตั้ง */
+            justify-content: center;
+            gap: 50px; /* ระยะห่างระหว่างภาพกับข้อความ */
+        }
+        .content-wrapper img {
+            max-width: 150px; /* กำหนดขนาดภาพ */
+            height: auto;
+        }
+        .content-text {
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="content-wrapper">
+            <img src="images/dd-unscreen.gif" alt="moving image">
+            <div class="content-text">
+                <h1>ค้นหาสิ่งที่อยู่ในวิดีโอ</h1>
+            <h3>คุณต้องการค้นหาอะไร ? ลองอัปโหลดวิดีโอและมาหาสิ่งที่คุณต้องการกันเถอะ</h3>
+        </div>
+            </div>
+    <br>
+    <br>
+    <br>
+    <br>
+    <form id="uploadForm" enctype="multipart/form-data">
+        <label for="video">Upload Video ♡</label><br><br>
+        <input type="file" id="video" name="video" accept="video/*" required><br><br>
+        <label for="frameCount">จำนวนเฟรมที่ต้องการดึง ♡</label><br><br>
+        <input type="number" id="frameCount" name="frameCount" placeholder="✎ ┅┅┅┅┅ " required><br><br>
+        <div class="container">
+            <button type="submit" class="button">Upload and Extract Frames</button>
+        </div>
+    </form>
+    <p id="message"></p>
+    <div id="framesContainer"></div>
+    <script>
+        document.getElementById('uploadForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const formData = new FormData();
+            const videoFile = document.getElementById('video').files[0];
+            const frameCount = document.getElementById('frameCount').value;
+            formData.append('video', videoFile);
+            formData.append('frameCount', frameCount);
+            document.getElementById('message').textContent = 'Uploading and extracting frames...';
+            try {
+                const response = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData,
+                });
+                if (!response.ok) {
+                    throw new Error('Upload failed');
+                }
+                const data = await response.json();
+                document.getElementById('message').textContent = data.message;
+                // แสดงผลเฟรมในหน้าเว็บ
+                const framesContainer = document.getElementById('framesContainer');
+                framesContainer.innerHTML = ''; // ล้างข้อมูลเก่าก่อน
+                data.frames.forEach(frameUrl => {
+                    if (frameUrl) {
+                        const img = document.createElement('img');
+                        img.src = frameUrl; // ใช้ URL ที่ได้รับจากเซิร์ฟเวอร์
+                        img.alt = "Extracted frame";
+                        img.style.maxWidth = '200px'; // กำหนดขนาดของรูปภาพไม่เกิน 200px
+                        framesContainer.appendChild(img);
+                    }
+                });
+            } catch (error) {
+                console.error('Error during upload:', error);
+                document.getElementById('message').textContent = 'Error: ' + error.message;
+            }
+        });
+    </script>
+</body>
+</html>
